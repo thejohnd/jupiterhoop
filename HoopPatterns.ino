@@ -1,7 +1,7 @@
 #include <Adafruit_DotStar.h>
 #include <SPI.h>
 
-#define NUMPIXELS 90
+#define NUMPIXELS 85
 
 enum pattern { PULSE, JULIE2C, SCANNER };
 
@@ -237,7 +237,6 @@ uint32_t Wheel(byte WheelPos)
 };    
 
 //real loop n stuff
-
 HoopPatterns hoop(NUMPIXELS);
 int BUTTONPIN = 9;
 byte mode = 0; //mode index
@@ -248,6 +247,7 @@ void setup()
 {
    pinMode(BUTTONPIN, INPUT_PULLUP);
    hoop.begin(); // Initialize pins for output
+   //SPI.setClockDivider(SPI_CLOCK_DIV2); //refresh rate TO THE MAX!!1!
    //hoop.Julie2C(120); //init patterns
    hoop.Pulse(50);  //""
    hoop.show();  // Turn all LEDs off ASAP
