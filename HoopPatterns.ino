@@ -3,7 +3,7 @@
 
 #define NUMPIXELS 85
 
-enum pattern { PULSE, JULIE2C, SCANNER };
+enum pattern { PULSE, JULIE2C, SCANNER, MATHSTRIPES };
 
 class HoopPatterns : public Adafruit_DotStar
 {
@@ -49,6 +49,8 @@ class HoopPatterns : public Adafruit_DotStar
                 case 2:
                     ScannerUpdate();
                     break;
+                case 3:
+                    break; //no update needed for MathStripes
                 default:
                     break;
             }
@@ -179,8 +181,23 @@ class HoopPatterns : public Adafruit_DotStar
         Increment();
         Color1 = Wheel(map(Index,0,TotalSteps,0,255));
     }    
-    
-    
+   
+   //initialize MathStripes, static pattern, no update needed
+   void MathStripes(byte b)
+   {
+      for (int i =0; i < numPixels(); i++)
+      {
+        if ((i+1)%8 <= 5 && (i+1)%8 != 0) {
+          setPixelColor(i, b, b, b); //on
+        }   
+        else {
+          setPixelColor(i, 0, 0, 0); //off
+        }
+      }
+      show();
+   }
+        
+//---utility functions used in patterns---
 uint32_t Wheel(byte WheelPos)
     {
         WheelPos = 255 - WheelPos;
@@ -240,14 +257,14 @@ uint32_t Wheel(byte WheelPos)
 HoopPatterns hoop(NUMPIXELS);
 int BUTTONPIN = 9;
 byte mode = 0; //mode index
-byte modeNum = 3; //total # of modes. actual total number of modes, not #modes-1
+byte modeNum = 4; //total # of modes. actual total number of modes, not #modes-1
 bool pinState = 1;
 
 void setup()
 {
    pinMode(BUTTONPIN, INPUT_PULLUP);
    hoop.begin(); // Initialize pins for output
-   //SPI.setClockDivider(SPI_CLOCK_DIV2); //refresh rate TO THE MAX!!1!
+   SPI.setClockDivider(SPI_CLOCK_DIV2); //refresh rate TO THE MAX!!1!
    //hoop.Julie2C(120); //init patterns
    hoop.Pulse(50);  //""
    hoop.show();  // Turn all LEDs off ASAP
@@ -284,6 +301,10 @@ void loop()
           hoop.Scanner(hoop.Wheel(hoop.Index), 75);
           hoop.ActivePattern = SCANNER;
           break;  
+       case 3:
+         hoop.MathStripes(255);
+         hoop.ActivePattern = MATHSTRIPES;
+         break;
        default:
           hoop.Pulse(50);
           hoop.ActivePattern =  PULSE;
