@@ -1,9 +1,9 @@
 #include <Adafruit_DotStar.h>
 #include <SPI.h>
 
-#define NUMPIXELS 85
+#define NUMPIXELS 78
 
-enum pattern { PULSE, JULIE2C, SCANNER, MATHSTRIPES };
+enum pattern { CHARGE, PULSE, JULIE2C, SCANNER, MATHSTRIPES };
 
 class HoopPatterns : public Adafruit_DotStar
 {
@@ -40,16 +40,18 @@ class HoopPatterns : public Adafruit_DotStar
             lastUpdate = millis();
             switch(ActivePattern)
             {
-                case 0:
+                case CHARGE:
+                    break;  
+                case PULSE:
                     PulseUpdate();
                     break;
-                case 1:
+                case JULIE2C:
                     Julie2CUpdate();
                     break;
-                case 2:
+                case SCANNER:
                     ScannerUpdate();
                     break;
-                case 3:
+                case MATHSTRIPES:
                     break; //no update needed for MathStripes
                 default:
                     break;
@@ -185,10 +187,13 @@ class HoopPatterns : public Adafruit_DotStar
    //initialize MathStripes, static pattern, no update needed
    void MathStripes(byte b)
    {
-      for (int i =0; i < numPixels(); i++)
+     //byte toggle = 0;
+     //byte cIndex = 0; 
+     
+     for (int i =0; i < numPixels(); i++)
       {
         if ((i+1)%8 <= 5 && (i+1)%8 != 0) {
-          setPixelColor(i, b, b, b); //on
+          setPixelColor(i, b-100, b, b); //on
         }   
         else {
           setPixelColor(i, 0, 0, 0); //off
@@ -196,9 +201,19 @@ class HoopPatterns : public Adafruit_DotStar
       }
       show();
    }
+   
+   void Charge()
+   {
+     ActivePattern = CHARGE;
+     Interval = 120;
+     TotalSteps = 1;
+     Index = 0;
+     ColorSet(0);
+     show();
+   }
         
 //---utility functions used in patterns---
-uint32_t Wheel(byte WheelPos)
+    uint32_t Wheel(byte WheelPos)
     {
         WheelPos = 255 - WheelPos;
         if(WheelPos < 85)
@@ -257,16 +272,16 @@ uint32_t Wheel(byte WheelPos)
 HoopPatterns hoop(NUMPIXELS);
 int BUTTONPIN = 9;
 byte mode = 0; //mode index
-byte modeNum = 4; //total # of modes. actual total number of modes, not #modes-1
-bool pinState = 1;
+byte modeNum = 5; //total # of modes. actual total number of modes, not #modes-1
+bool pinState = digitalRead(BUTTONPIN);
 
 void setup()
 {
    pinMode(BUTTONPIN, INPUT_PULLUP);
    hoop.begin(); // Initialize pins for output
    SPI.setClockDivider(SPI_CLOCK_DIV2); //refresh rate TO THE MAX!!1!
-   //hoop.Julie2C(120); //init patterns
-   hoop.Pulse(50);  //""
+   hoop.Julie2C(120); //init patterns
+   hoop.Charge();  //""
    hoop.show();  // Turn all LEDs off ASAP
 }
 
@@ -277,38 +292,38 @@ void loop()
     hoop.Update();
     hoop.show();
     
-    if (digitalRead(BUTTONPIN) == LOW) // Button #1 pressed
+    if (digitalRead(BUTTONPIN) != pinState)
     {
-      pinState = 0;
-    }
-    else if (digitalRead(BUTTONPIN) != pinState)
-    {
-      pinState = 1;
+      pinState = digitalRead(BUTTONPIN);
       mode++;
       if (mode>=modeNum){
         mode = 0;
       }
-      switch(mode){
-       case 0:
+    }
+    switch(mode){
+        case 0:
+          hoop.Charge();
+          hoop.ActivePattern = CHARGE;
+          break;
+        case 1:
           hoop.Pulse(20);
           hoop.ActivePattern = PULSE;
           break;  
-       case 1:
+       case 2:
           hoop.Julie2C(120);
           hoop.ActivePattern =  JULIE2C;
           break;
-       case 2:
+       case 3:
           hoop.Scanner(hoop.Wheel(hoop.Index), 75);
           hoop.ActivePattern = SCANNER;
           break;  
-       case 3:
+       case 4:
          hoop.MathStripes(255);
          hoop.ActivePattern = MATHSTRIPES;
          break;
        default:
-          hoop.Pulse(50);
-          hoop.ActivePattern =  PULSE;
+          hoop.Charge();
+          hoop.ActivePattern = CHARGE;
           break;
-      }
     }
 }      
