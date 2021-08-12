@@ -1,7 +1,7 @@
 #include <Adafruit_DotStar.h>
 #include <SPI.h>
 
-#define NUMPIXELS 78
+#define NUMPIXELS 80
 
 enum pattern { CHARGE, PULSE, JULIE2C, SCANNER, MATHSTRIPES };
 
@@ -40,18 +40,18 @@ class HoopPatterns : public Adafruit_DotStar
             lastUpdate = millis();
             switch(ActivePattern)
             {
-                case CHARGE:
+                case 0:
                     break;  
-                case PULSE:
+                case 1:
                     PulseUpdate();
                     break;
-                case JULIE2C:
+                case 2:
                     Julie2CUpdate();
                     break;
-                case SCANNER:
+                case 3:
                     ScannerUpdate();
                     break;
-                case MATHSTRIPES:
+                case 4:
                     break; //no update needed for MathStripes
                 default:
                     break;
@@ -279,9 +279,9 @@ void setup()
 {
    pinMode(BUTTONPIN, INPUT_PULLUP);
    hoop.begin(); // Initialize pins for output
-   SPI.setClockDivider(SPI_CLOCK_DIV2); //refresh rate TO THE MAX!!1!
-   hoop.Julie2C(120); //init patterns
-   hoop.Charge();  //""
+   //SPI.setClockDivider(SPI_CLOCK_DIV2); //refresh rate TO THE MAX!!1!
+   //hoop.Julie2C(120); //init patterns
+   hoop.Pulse(50);  //""
    hoop.show();  // Turn all LEDs off ASAP
 }
 
@@ -299,7 +299,7 @@ void loop()
       if (mode>=modeNum){
         mode = 0;
       }
-    }
+    
     switch(mode){
         case 0:
           hoop.Charge();
@@ -326,4 +326,7 @@ void loop()
           hoop.ActivePattern = CHARGE;
           break;
     }
+    hoop.Update();
+    hoop.show();
+  }
 }      
