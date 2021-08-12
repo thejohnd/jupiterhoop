@@ -3,7 +3,7 @@
 
 #define NUMPIXELS 90
 
-enum pattern { PULSE, JULIE2C };
+enum pattern { PULSE, JULIE2C, SCANNER };
 
 class HoopPatterns : public Adafruit_DotStar
 {
@@ -14,6 +14,7 @@ class HoopPatterns : public Adafruit_DotStar
   unsigned long Interval;   // milliseconds between updates
   unsigned long lastUpdate; // last update of position
   
+  uint32_t Color1;
   uint16_t TotalSteps;  // total number of steps in the pattern
   uint16_t Index;  // current step within the pattern
   
@@ -44,6 +45,9 @@ class HoopPatterns : public Adafruit_DotStar
                     break;
                 case 1:
                     Julie2CUpdate();
+                    break;
+                case 2:
+                    ScannerUpdate();
                     break;
                 default:
                     break;
@@ -80,11 +84,11 @@ class HoopPatterns : public Adafruit_DotStar
         {
             setPixelColor(i, Wheel(((i * 256 / numPixels()) + Index) & 255));
         }
-        if (Index <= 255){
-         setBrightness(Index);
+        if ((Index*2) <= TotalSteps){
+         setBrightness(map(Index,0,TotalSteps,20,255));
         }
         else{
-          setBrightness(255-(Index-255));
+          setBrightness(map((TotalSteps-Index),0,TotalSteps,20,255));
         }
         show();
         Increment();
@@ -106,7 +110,7 @@ class HoopPatterns : public Adafruit_DotStar
         for(int i = 0; i<=numPixels(); i++){
           if(i%4==0) {   
             setPixelColor(i,240,20,100);
-            setPixelColor((i+1),255,20,20);
+            setPixelColor((i+1),240,20,100);
             show();  
             i++;  
           }
@@ -137,6 +141,46 @@ class HoopPatterns : public Adafruit_DotStar
       //Increment();
     }
     
+// Initialize for a SCANNNER
+    void Scanner(uint32_t color1, uint8_t interval)
+    {
+        ActivePattern = SCANNER;
+        Interval = interval;
+        TotalSteps = (numPixels() - 1) * 2;
+        Color1 = color1;
+        Index = 0;
+        setBrightness(255);
+    }
+ 
+    // Update the Scanner Pattern
+    void ScannerUpdate()
+    { 
+        for (int i = 0; i < numPixels(); i++)
+        {
+            if (i == Index)  // Scan Pixel to the right
+            {
+                 setPixelColor(i, Color1);
+            }
+            else if (i == TotalSteps - Index) // Scan Pixel to the left
+            {
+                 setPixelColor(i, Color1);
+            }
+            else // Fading tail
+            {
+              if(getPixelColor(i)==0x000000){
+                 setPixelColor(i, 0, 50, 00);
+              }
+           else{
+              setPixelColor(i, DimColor(getPixelColor(i)));
+           }
+            }
+        }
+        show();
+        Increment();
+        Color1 = Wheel(map(Index,0,TotalSteps,0,255));
+    }    
+    
+    
 uint32_t Wheel(byte WheelPos)
     {
         WheelPos = 255 - WheelPos;
@@ -155,50 +199,95 @@ uint32_t Wheel(byte WheelPos)
             return Color(WheelPos * 3, 255 - WheelPos * 3, 0);
         }
     }
+    
+    uint32_t DimColor(uint32_t color)
+    {
+        // Shift R, G and B components one bit to the right
+        uint32_t dimColor = Color(Red(color) >> 1, Green(color) >> 1, Blue(color) >> 1);
+        return dimColor;
+    }
+ 
+    // Set all pixels to a color (synchronously)
+    void ColorSet(uint32_t color)
+    {
+        for (int i = 0; i < numPixels(); i++)
+        {
+            setPixelColor(i, color);
+        }
+        show();
+    }
+    
+    // Returns the Red component of a 32-bit color
+    uint8_t Red(uint32_t color)
+    {
+        return (color >> 16) & 0xFF;
+    }
+ 
+    // Returns the Green component of a 32-bit color
+    uint8_t Green(uint32_t color)
+    {
+        return (color >> 8) & 0xFF;
+    }
+ 
+    // Returns the Blue component of a 32-bit color
+    uint8_t Blue(uint32_t color)
+    {
+        return color & 0xFF;
+    }
 };    
 
 //real loop n stuff
 
 HoopPatterns hoop(NUMPIXELS);
 int BUTTONPIN = 9;
-byte mode = 0;
-byte modeNum = 2;
+byte mode = 0; //mode index
+byte modeNum = 3; //total # of modes. actual total number of modes, not #modes-1
+bool pinState = 1;
 
 void setup()
 {
    pinMode(BUTTONPIN, INPUT_PULLUP);
    hoop.begin(); // Initialize pins for output
-   hoop.Julie2C(120);
-   hoop.Pulse(20);
+   //hoop.Julie2C(120); //init patterns
+   hoop.Pulse(50);  //""
    hoop.show();  // Turn all LEDs off ASAP
 }
 
 // Main loop
 void loop()
 {
-    // Update the rings.
+    // Update
     hoop.Update();
     hoop.show();
     
     if (digitalRead(BUTTONPIN) == LOW) // Button #1 pressed
     {
+      pinState = 0;
+    }
+    else if (digitalRead(BUTTONPIN) != pinState)
+    {
+      pinState = 1;
       mode++;
       if (mode>=modeNum){
         mode = 0;
       }
-    switch(mode){
-    case 0:
-      hoop.Pulse(20);
-      hoop.ActivePattern = PULSE;
-      break;
-     case 1:
-       hoop.Julie2C(70);
-       hoop.ActivePattern =  JULIE2C;
-       break;
-     default:
-       hoop.Pulse(20);
-       hoop.ActivePattern =  PULSE;
-       break;
-  }
+      switch(mode){
+       case 0:
+          hoop.Pulse(20);
+          hoop.ActivePattern = PULSE;
+          break;  
+       case 1:
+          hoop.Julie2C(120);
+          hoop.ActivePattern =  JULIE2C;
+          break;
+       case 2:
+          hoop.Scanner(hoop.Wheel(hoop.Index), 75);
+          hoop.ActivePattern = SCANNER;
+          break;  
+       default:
+          hoop.Pulse(50);
+          hoop.ActivePattern =  PULSE;
+          break;
+      }
     }
 }      
